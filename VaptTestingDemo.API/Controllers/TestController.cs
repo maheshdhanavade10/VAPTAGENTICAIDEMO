@@ -11,17 +11,39 @@ namespace VaptTestingDemo.API.Controllers
     [Route("api/test")]
     public class TestController : ControllerBase
     {
-        // SQL Injection vulnerability
+        // SQL Injection vulnerability - Now with actual execution for CodeQL detection
         [HttpGet("sql")]
         public IActionResult SqlInjection(string input)
         {
-            // Simulate a vulnerable SQL query
-            string query = $"SELECT * FROM Users WHERE Username = '{input}'";
-            // In a real scenario, this would execute against a database
-            return Ok(new { Query = query, Message = "This is vulnerable to SQL injection" });
+            try
+            {
+                // Vulnerable SQL query construction
+                string query = $"SELECT * FROM Users WHERE Username = '{input}'";
+                
+                // Add actual SQL execution to make it detectable by CodeQL
+                using var connection = new SqlConnection("Server=localhost;Database=test;User=admin;Password=secret123");
+                using var command = new SqlCommand(query, connection);
+                connection.Open();
+                var reader = command.ExecuteReader();  // This creates the exploitable path
+                
+                // Simulate reading results (though connection may fail)
+                var results = new List<string>();
+                while (reader.Read())
+                {
+                    results.Add(reader[0]?.ToString() ?? "null");
+                }
+                
+                return Ok(new { Query = query, Results = results, Message = "SQL executed (vulnerable to injection)" });
+            }
+            catch (Exception ex)
+            {
+                // Return the vulnerable query even on error
+                string query = $"SELECT * FROM Users WHERE Username = '{input}'";
+                return Ok(new { Query = query, Error = ex.Message, Message = "This is vulnerable to SQL injection" });
+            }
         }
 
-        // XSS vulnerability
+        // XSS vulnerability - Direct HTML output
         [HttpGet("xss")]
         public IActionResult CrossSiteScripting(string input)
         {
@@ -30,7 +52,7 @@ namespace VaptTestingDemo.API.Controllers
             return Content(response, "text/html");
         }
 
-        // Broken Authentication
+        // Broken Authentication - No auth checks
         [HttpGet("auth")]
         public IActionResult BrokenAuthentication()
         {
@@ -38,7 +60,7 @@ namespace VaptTestingDemo.API.Controllers
             return Ok(new { SensitiveData = "This should be protected", UserId = 12345 });
         }
 
-        // Insecure Deserialization
+        // Insecure Deserialization - Deserialize without type checking
         [HttpPost("deserialization")]
         public IActionResult InsecureDeserialization([FromBody] string jsonInput)
         {
@@ -54,7 +76,7 @@ namespace VaptTestingDemo.API.Controllers
             }
         }
 
-        // Sensitive Data Exposure
+        // Sensitive Data Exposure - Hardcoded sensitive data
         [HttpGet("data")]
         public IActionResult SensitiveDataExposure()
         {
@@ -68,15 +90,30 @@ namespace VaptTestingDemo.API.Controllers
             });
         }
 
-        // Command execution demonstration (secured: no OS command is invoked)
+        // Command Injection - Now with actual command execution
         [HttpGet("cmd")]
         public IActionResult CommandInjection(string input)
         {
             try
             {
-                // Simulate echoing the input without invoking the operating system shell
-                var message = $"Executed command: echo {input}";
-                return Ok(new { Message = message });
+                // Actual command execution - vulnerable to injection
+                var process = new Process
+                {
+                    StartInfo = new ProcessStartInfo
+                    {
+                        FileName = "cmd.exe",  // Windows command prompt
+                        Arguments = $"/c echo {input}",  // Vulnerable to injection
+                        RedirectStandardOutput = true,
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    }
+                };
+                
+                process.Start();
+                string output = process.StandardOutput.ReadToEnd();
+                process.WaitForExit();
+                
+                return Ok(new { Command = $"echo {input}", Output = output, Message = "Command executed" });
             }
             catch (Exception ex)
             {
@@ -84,7 +121,7 @@ namespace VaptTestingDemo.API.Controllers
             }
         }
 
-        // Broken Access Control
+        // Broken Access Control - No authorization
         [HttpGet("admin")]
         public IActionResult BrokenAccessControl()
         {
@@ -97,7 +134,7 @@ namespace VaptTestingDemo.API.Controllers
             });
         }
 
-        // Security Misconfiguration
+        // Security Misconfiguration - Exposed config
         [HttpGet("config")]
         public IActionResult SecurityMisconfiguration()
         {
@@ -111,7 +148,7 @@ namespace VaptTestingDemo.API.Controllers
             });
         }
 
-        // Server-Side Request Forgery (SSRF)
+        // Server-Side Request Forgery (SSRF) - Unvalidated URL
         [HttpGet("ssrf")]
         public async Task<IActionResult> ServerSideRequestForgery(string url)
         {
@@ -128,7 +165,7 @@ namespace VaptTestingDemo.API.Controllers
             }
         }
 
-        // Weak Authentication / Identification Failures
+        // Weak Authentication - Hardcoded credentials
         [HttpPost("login")]
         public IActionResult WeakAuthentication([FromBody] LoginRequest request)
         {
