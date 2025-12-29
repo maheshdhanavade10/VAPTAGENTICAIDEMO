@@ -187,6 +187,7 @@ jobs:
         base-ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.ref || 'main' }}
         head-ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref_name }}
 
+jobs:
   security-audit:
     name: Trivy filesystem scan and upload to Security tab
     runs-on: ubuntu-latest
@@ -212,12 +213,13 @@ jobs:
       with:
         sarif_file: 'trivy-results.sarif'
 
-- name: Force create test PR
-  if: always()
-  run: |
-    echo "Forcing PR creation for testing"
-    # Add a dummy change
-    echo "# Test change" >> README.md
-    git add README.md
-    git commit -m "Test PR creation"
-    git push origin HEAD:test-pr-branch
+    # ✅ Now properly nested under steps
+    - name: Force create test PR
+      if: always()
+      run: |
+        echo "Forcing PR creation for testing"
+        # Add a dummy change
+        echo "# Test change" >> README.md
+        git add README.md
+        git commit -m "Test PR creation"
+        git push origin HEAD:test-pr-branch
