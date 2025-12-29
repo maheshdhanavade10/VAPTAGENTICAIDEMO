@@ -189,6 +189,111 @@ The VAPT Agent can:
 - PR creation includes detailed vulnerability reports
 - GitHub Security tab integration for findings
 
+## 🖥️ **Running Locally (Alternative to GitHub Actions)**
+
+While GitHub Actions workflows run on GitHub's infrastructure, you can test and run most components locally using the provided scripts.
+
+### **Local Development Tools**
+
+#### **1. Interactive Local Runner**
+```bash
+# Make script executable (Linux/Mac)
+chmod +x local-dev.sh
+
+# Run interactive menu
+./local-dev.sh
+```
+
+#### **2. Workflow Simulation**
+```bash
+# Simulate the entire GitHub Actions workflow locally
+python scripts/simulate_workflow.py
+```
+
+#### **3. Individual Component Testing**
+```bash
+# Setup validation
+python scripts/test_setup.py
+
+# API key testing
+python scripts/test_api_key.py
+
+# GitHub setup helper
+python scripts/github_setup.py
+```
+
+### **Local Tool Alternatives**
+
+| GitHub Action | Local Alternative | Installation |
+|---------------|------------------|-------------|
+| **CodeQL** | `dotnet build` + manual review | Built-in |
+| **Trivy** | `trivy fs .` | [Install Trivy](https://aquasecurity.github.io/trivy/) |
+| **Dependency Review** | Manual `dotnet list package` | Built-in |
+| **VAPT Agent** | `python scripts/vapt_agent.py` | Local Python |
+
+### **Manual Local Security Scanning**
+
+#### **Build & Test .NET Project**
+```bash
+cd VaptTestingDemo.API
+dotnet build --configuration Release
+dotnet test  # If you add tests
+```
+
+#### **Run Trivy Locally**
+```bash
+# Install Trivy first
+trivy fs --format table --output trivy-results.txt .
+
+# Or use Docker
+docker run aquasecurity/trivy fs --format table .
+```
+
+#### **Check Dependencies**
+```bash
+# List .NET packages
+dotnet list package
+
+# Check for outdated packages
+dotnet list package --outdated
+```
+
+#### **Manual Security Review**
+```bash
+# Search for common vulnerabilities
+grep -r "SELECT.*FROM.*+" --include="*.cs" .
+grep -r "password\|secret" --include="*.cs" .
+```
+
+### **Local Development Workflow**
+
+```
+1. Code Changes → 2. Local Testing → 3. GitHub Push → 4. Actions Run
+     ↓                    ↓                        ↓
+   Edit files        ./local-dev.sh          Automatic CI/CD
+   in VS Code         Run checks            Full security scan
+```
+
+### **Benefits of Local Testing**
+
+- ✅ **Faster iteration** - No waiting for GitHub Actions
+- ✅ **Cost effective** - No GitHub minutes usage
+- ✅ **Debugging** - Better error visibility
+- ✅ **Offline development** - Works without internet
+- ✅ **Component isolation** - Test individual pieces
+
+### **When to Use GitHub Actions**
+
+- **Full integration testing**
+- **Official security reports**
+- **Automated PR workflows**
+- **Team collaboration**
+- **Production deployments**
+
+## 🎯 Recommendation
+
+**Use local tools for development and testing, GitHub Actions for official CI/CD and security reporting.**
+
 ## 🤝 Contributing
 
 1. Fork the repository
