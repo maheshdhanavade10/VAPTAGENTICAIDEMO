@@ -1,17 +1,17 @@
 name: VAPT Security Scan and Auto-Fix
 
-# on:
+on:
 #   push:
 #     branches: [ main, develop ]
 #   pull_request:
 #     branches: [ main ]
-#   workflow_dispatch:
-#     inputs:
-#       run_security_scan:
-#         description: 'Run security scan and auto-fix'
-#         required: true
-#         default: 'true'
-#         type: boolean
+  workflow_dispatch:
+    inputs:
+      run_security_scan:
+        description: 'Run security scan and auto-fix'
+        required: true
+        default: 'true'
+        type: boolean
 
 jobs:
   security-scan:
