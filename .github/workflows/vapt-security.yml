@@ -60,12 +60,16 @@ jobs:
       with:
         persist-credentials: true
         fetch-depth: 0
+
+    - name: Log checkout success
       run: echo "Repository checked out successfully."
 
     - name: Set up .NET SDK
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: '8.0.x'
+
+    - name: Log .NET setup success
       run: echo ".NET SDK 8.0.x set up successfully."
 
     - name: Run .NET format auto-fixer
