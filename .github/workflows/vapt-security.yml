@@ -60,22 +60,30 @@ jobs:
       with:
         persist-credentials: true
         fetch-depth: 0
+      run: echo "Repository checked out successfully."
 
     - name: Set up .NET SDK
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: '8.0.x'
+      run: echo ".NET SDK 8.0.x set up successfully."
 
     - name: Run .NET format auto-fixer
       run: |
-        dotnet format --verify-no-changes || dotnet format
+        echo "Starting .NET format check..."
+        dotnet format --verify-no-changes || (echo "Formatting changes applied." && dotnet format)
+        echo ".NET format step completed."
 
     - name: Detect changes
       id: changes
       run: |
-        if [ -z "$(git status --porcelain)" ]; then
+        STATUS=$(git status --porcelain)
+        echo "Git status output: $STATUS"
+        if [ -z "$STATUS" ]; then
+          echo "No changes detected."
           echo "changed=false" >> $GITHUB_OUTPUT
         else
+          echo "Changes detected."
           echo "changed=true" >> $GITHUB_OUTPUT
         fi
 
@@ -83,19 +91,28 @@ jobs:
       id: commit
       if: steps.changes.outputs.changed == 'true'
       run: |
+        echo "Starting commit process..."
         BRANCH="fix/codeql-issues"
         git config --global user.name "github-actions[bot]"
         git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
         if git ls-remote --exit-code --heads origin "$BRANCH" > /dev/null; then
           BRANCH="fix/codeql-issues-$(date +%Y%m%d%H%M%S)"
+          echo "Branch already exists, using new branch: $BRANCH"
+        else
+          echo "Using branch: $BRANCH"
         fi
         git checkout -b "$BRANCH"
+        echo "Checked out new branch: $BRANCH"
         git add .
+        echo "Staged changes."
         git commit -m "Auto-fix: CodeQL-detected vulnerabilities and formatting"
+        echo "Committed changes."
         git push origin "$BRANCH"
+        echo "Pushed branch to origin."
         echo "branch=$BRANCH" >> $GITHUB_OUTPUT
 
     - name: Create Pull Request
+      id: pr
       if: steps.changes.outputs.changed == 'true'
       uses: peter-evans/create-pull-request@v6
       with:
@@ -109,3 +126,11 @@ jobs:
         labels: |
           security
           automated-fix
+
+    - name: Log PR creation result
+      run: |
+        if [ "${{ steps.pr.outputs.pull-request-number }}" ]; then
+          echo "PR created successfully: #${{ steps.pr.outputs.pull-request-number }} - ${{ steps.pr.outputs.pull-request-url }}"
+        else
+          echo "PR creation failed or skipped (no changes detected)."
+        fi
