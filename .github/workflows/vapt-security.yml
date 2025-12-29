@@ -211,4 +211,13 @@ jobs:
       if: always()
       with:
         sarif_file: 'trivy-results.sarif'
-        
+
+- name: Force create test PR
+  if: always()
+  run: |
+    echo "Forcing PR creation for testing"
+    # Add a dummy change
+    echo "# Test change" >> README.md
+    git add README.md
+    git commit -m "Test PR creation"
+    git push origin HEAD:test-pr-branch
