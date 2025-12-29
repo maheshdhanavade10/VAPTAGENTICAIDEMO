@@ -68,15 +68,15 @@ namespace VaptTestingDemo.API.Controllers
             });
         }
 
-        // Command Injection vulnerability
+        // Command execution demonstration (secured: no OS command is invoked)
         [HttpGet("cmd")]
         public IActionResult CommandInjection(string input)
         {
             try
             {
-                // Execute system command with user input - vulnerable to injection
-                Process.Start("cmd.exe", $"/c echo {input}");
-                return Ok(new { Message = $"Executed command: echo {input}" });
+                // Simulate echoing the input without invoking the operating system shell
+                var message = $"Executed command: echo {input}";
+                return Ok(new { Message = message });
             }
             catch (Exception ex)
             {
