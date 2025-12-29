@@ -1,0 +1,6 @@
+@VaptTestingDemo.API_HostAddress = http://localhost:5022
+
+GET {{VaptTestingDemo.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
