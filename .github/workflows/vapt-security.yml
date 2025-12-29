@@ -18,12 +18,10 @@ on:
         default: false
         type: boolean
 
-# Sensible concurrency to avoid overlapping auto-fix branches
 concurrency:
   group: vapt-security-${{ github.ref }}
   cancel-in-progress: true
 
-# Set minimal global permissions, grant job-specific ones where needed
 permissions:
   contents: read
 
@@ -106,11 +104,11 @@ jobs:
     runs-on: ubuntu-latest
     needs: codeql-analysis
     permissions:
-      contents: write    # needed to push branch and create PR
+      contents: write
       pull-requests: write
 
     steps:
-    - name: Checkout repository (with write token)
+    - name: Checkout repository
       uses: actions/checkout@v4
       with:
         persist-credentials: true
@@ -123,32 +121,30 @@ jobs:
 
     - name: Run .NET format auto-fixer
       run: |
-        # Try verify, and if there are changes needed, apply them
         dotnet format --verify-no-changes || dotnet format
 
     - name: Detect changes
       id: changes
       run: |
-        CHANGED=$(git status --porcelain)
-        if [ -z "$CHANGED" ]; then
+        if [ -z "$(git status --porcelain)" ]; then
           echo "changed=false" >> $GITHUB_OUTPUT
         else
           echo "changed=true" >> $GITHUB_OUTPUT
         fi
 
-    - name: Create fix branch, commit, and push
+    - name: Commit changes
+      id: commit
       if: steps.changes.outputs.changed == 'true'
       run: |
         BRANCH="fix/codeql-issues"
         git config --global user.name "github-actions[bot]"
         git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-        # If branch already exists locally or remotely, create a unique suffix
         if git ls-remote --exit-code --heads origin "$BRANCH" > /dev/null; then
           BRANCH="fix/codeql-issues-$(date +%Y%m%d%H%M%S)"
         fi
         git checkout -b "$BRANCH"
         git add .
-        git commit -m "Auto-fix: formatting and simple refactors after CodeQL/format checks"
+        git commit -m "Auto-fix: formatting and simple refactors after CodeQL checks"
         git push origin "$BRANCH"
         echo "branch=$BRANCH" >> $GITHUB_OUTPUT
 
@@ -156,7 +152,7 @@ jobs:
       if: steps.changes.outputs.changed == 'true'
       uses: peter-evans/create-pull-request@v6
       with:
-        branch: ${{ steps.changes.outputs.branch }}
+        branch: ${{ steps.commit.outputs.branch }}
         base: main
         title: "Auto-fix: CodeQL follow-ups and formatting"
         body: |
