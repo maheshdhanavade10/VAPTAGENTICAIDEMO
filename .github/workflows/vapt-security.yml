@@ -1,16 +1,21 @@
 name: VAPT Security Scan and Auto-Fix
 
 on:
-#   push:
-#     branches: [ main, develop ]
-#   pull_request:
-#     branches: [ main ]
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
   workflow_dispatch:
     inputs:
       run_security_scan:
         description: 'Run security scan and auto-fix'
         required: true
         default: 'true'
+        type: boolean
+      run_dependency_review:
+        description: 'Run dependency review (requires PR context or manual refs)'
+        required: false
+        default: 'false'
         type: boolean
 
 jobs:
@@ -52,7 +57,7 @@ jobs:
       continue-on-error: true
 
     - name: Upload security scan results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: security-scan-results
         path: |
@@ -86,11 +91,20 @@ jobs:
 
   dependency-review:
     runs-on: ubuntu-latest
+    # Run on pull requests or when manually triggered with dependency review enabled
+    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && github.event.inputs.run_dependency_review == 'true')
     steps:
     - name: Checkout Repository
       uses: actions/checkout@v4
+      with:
+        # Fetch full history for dependency comparison
+        fetch-depth: 0
     - name: Dependency Review
       uses: actions/dependency-review-action@v3
+      with:
+        # For manual runs, use current branch as head and main as base
+        base-ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.ref || 'main' }}
+        head-ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref_name }}
 
   security-audit:
     runs-on: ubuntu-latest
