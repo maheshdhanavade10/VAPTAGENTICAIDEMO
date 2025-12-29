@@ -91,15 +91,23 @@ jobs:
 
   dependency-review:
     runs-on: ubuntu-latest
-    # Run on pull requests or when manually triggered with dependency review enabled
-    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && github.event.inputs.run_dependency_review == 'true')
+    # Run on pull requests or when manually triggered (with manual refs)
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     steps:
     - name: Checkout Repository
       uses: actions/checkout@v4
       with:
         # Fetch full history for dependency comparison
         fetch-depth: 0
+
+    - name: Skip dependency review (manual trigger without PR)
+      if: github.event_name == 'workflow_dispatch' && github.event.inputs.run_dependency_review == 'false'
+      run: |
+        echo "ℹ️ Dependency review skipped - enable 'Run dependency review' option for manual scans"
+        echo "📝 Dependency review requires PR context to compare dependency changes"
+
     - name: Dependency Review
+      if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && github.event.inputs.run_dependency_review == 'true')
       uses: actions/dependency-review-action@v3
       with:
         # For manual runs, use current branch as head and main as base
