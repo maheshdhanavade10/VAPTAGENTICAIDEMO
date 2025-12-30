@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 namespace VaptTestingDemo.API.Controllers
 {
     [ApiController]
-    [Route("api/test")]
+    //[Route("api/test")]
     public class TestOKController : ControllerBase
     {
 
