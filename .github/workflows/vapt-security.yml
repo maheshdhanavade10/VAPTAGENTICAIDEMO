@@ -99,7 +99,8 @@ jobs:
         uses: actions/checkout@v4
 
       - name: OWASP Dependency Check
-        uses: dependency-check/Dependency-Check_Action@v3
+        # Use the hyphenated, lowercase repository name for the official action
+        uses: dependency-check/dependency-check-action@v3
         with:
           project: "VAPTAGENTICAIDEMO"
           path: "."
@@ -120,13 +121,41 @@ jobs:
     runs-on: ubuntu-latest
     needs: [codeql-analysis, sonar-analysis]
     if: always()
+    # Expose APP_URL for the zap target and allow steps to start a local container
+    env:
+      APP_URL: http://localhost:5000
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build API Docker image for scan
+        run: |
+          docker build -t vapt-testing-demo.api:ci -f VaptTestingDemo.API/Dockerfile VaptTestingDemo.API
+
+      - name: Run API container for scan
+        run: |
+          docker run -d --rm --name vapt-testing-demo-ci -p 5000:80 vapt-testing-demo.api:ci
+
+      - name: Wait for API to be ready
+        run: |
+          # wait until the app responds on the health endpoint or root
+          for i in {1..30}; do
+            if curl -sSf "$APP_URL/api/test/auth" >/dev/null; then
+              echo "API is up"; break
+            fi
+            echo "Waiting for API... ($i)"; sleep 2
+          done
+
       - name: ZAP Baseline Scan
         uses: zaproxy/action-baseline@v0.10.0
         with:
-          target: "${{ vars.APP_URL }}"
+          target: "${{ env.APP_URL }}"
           cmd_options: "-a"
+
+      - name: Stop API container
+        if: always()
+        run: docker stop vapt-testing-demo-ci || true
 
       - name: Upload ZAP Report
         uses: actions/upload-artifact@v4
