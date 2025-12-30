@@ -12,28 +12,28 @@ jobs:
   # ---------------------------------------------------------
   # JOB 1: CodeQL Analysis (DISABLED)
   # ---------------------------------------------------------
-  # codeql-analysis:
-  #   name: CodeQL Analysis (C#)
-  #   runs-on: ubuntu-latest
-  #   permissions:
-  #     actions: read
-  #     contents: read
-  #     security-events: write
-  #
-  #   steps:
-  #     - name: Checkout repository
-  #       uses: actions/checkout@v4
-  #
-  #     - name: Initialize CodeQL
-  #       uses: github/codeql-action/init@v3
-  #       with:
-  #         languages: csharp
-  #
-  #     - name: Autobuild
-  #       uses: github/codeql-action/autobuild@v3
-  #
-  #     - name: Perform CodeQL Analysis
-  #       uses: github/codeql-action/analyze@v3
+  codeql-analysis:
+    name: CodeQL Analysis (C#)
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+  
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+  
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: csharp
+  
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+  
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
 
   # ---------------------------------------------------------
   # JOB 2: SonarCloud Analysis (DISABLED)
@@ -88,75 +88,75 @@ jobs:
   # ---------------------------------------------------------
   # JOB 3: OWASP Dependency Check (SCA)
   # ---------------------------------------------------------
-  owasp-dependency-check:
-    name: OWASP Dependency Check (SCA)
-    runs-on: ubuntu-latest
-    if: always()
+  # owasp-dependency-check:
+  #   name: OWASP Dependency Check (SCA)
+  #   runs-on: ubuntu-latest
+  #   if: always()
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+  #   steps:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@v4
 
-      - name: OWASP Dependency Check
-        uses: dependency-check/action@v3.0.0
-        with:
-          project: "VAPTAGENTICAIDEMO"
-          path: "."
-          format: "ALL"
-          out: "dependency-check-report"
+  #     - name: OWASP Dependency Check
+  #       uses: dependency-check/action@v3.0.0
+  #       with:
+  #         project: "VAPTAGENTICAIDEMO"
+  #         path: "."
+  #         format: "ALL"
+  #         out: "dependency-check-report"
 
-      - name: Upload Dependency Check Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: owasp-dependency-check-report
-          path: dependency-check-report
+  #     - name: Upload Dependency Check Report
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: owasp-dependency-check-report
+  #         path: dependency-check-report
 
   # ---------------------------------------------------------
   # JOB 4: OWASP ZAP Baseline Scan (DAST)
   # ---------------------------------------------------------
-  owasp-zap:
-    name: OWASP ZAP Baseline Scan (DAST)
-    runs-on: ubuntu-latest
-    if: always()
-    env:
-      APP_URL: http://localhost:5000
+  # owasp-zap:
+  #   name: OWASP ZAP Baseline Scan (DAST)
+  #   runs-on: ubuntu-latest
+  #   if: always()
+  #   env:
+  #     APP_URL: http://localhost:5000
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+  #   steps:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@v4
 
-      - name: Build API Docker image for scan
-        run: |
-          docker build -t vapt-testing-demo.api:ci -f VaptTestingDemo.API/Dockerfile VaptTestingDemo.API
+  #     - name: Build API Docker image for scan
+  #       run: |
+  #         docker build -t vapt-testing-demo.api:ci -f VaptTestingDemo.API/Dockerfile VaptTestingDemo.API
 
-      - name: Run API container for scan
-        run: |
-          docker run -d --rm --name vapt-testing-demo-ci -p 5000:80 vapt-testing-demo.api:ci
+  #     - name: Run API container for scan
+  #       run: |
+  #         docker run -d --rm --name vapt-testing-demo-ci -p 5000:80 vapt-testing-demo.api:ci
 
-      - name: Wait for API to be ready
-        run: |
-          for i in {1..30}; do
-            if curl -sSf "$APP_URL/api/test/auth" >/dev/null; then
-              echo "API is up"; break
-            fi
-            echo "Waiting for API... ($i)"; sleep 2
-          done
+  #     - name: Wait for API to be ready
+  #       run: |
+  #         for i in {1..30}; do
+  #           if curl -sSf "$APP_URL/api/test/auth" >/dev/null; then
+  #             echo "API is up"; break
+  #           fi
+  #           echo "Waiting for API... ($i)"; sleep 2
+  #         done
 
-      - name: ZAP Baseline Scan
-        uses: zaproxy/action-baseline@v0.10.0
-        with:
-          target: "${{ env.APP_URL }}"
-          cmd_options: "-a"
+  #     - name: ZAP Baseline Scan
+  #       uses: zaproxy/action-baseline@v0.10.0
+  #       with:
+  #         target: "${{ env.APP_URL }}"
+  #         cmd_options: "-a"
 
-      - name: Stop API container
-        if: always()
-        run: docker stop vapt-testing-demo-ci || true
+  #     - name: Stop API container
+  #       if: always()
+  #       run: docker stop vapt-testing-demo-ci || true
 
-      - name: Upload ZAP Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: zap-report
-          path: zap-report.html
+  #     - name: Upload ZAP Report
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: zap-report
+  #         path: zap-report.html
 
   # ---------------------------------------------------------
   # JOB 5: Auto-fix and PR Creation (DISABLED)
