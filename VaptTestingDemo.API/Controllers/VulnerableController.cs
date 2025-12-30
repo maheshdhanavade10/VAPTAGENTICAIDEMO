@@ -79,15 +79,60 @@ namespace DemoApi.Controllers
         }
 
         // ---------------------------------------------------------
-        // 7. Command Injection
+        // 7. Command Execution (restricted)
         // ---------------------------------------------------------
         [HttpGet("run")]
         public IActionResult RunCommand(string cmd)
         {
-            // ❌ Vulnerable: User input passed directly to shell
-            System.Diagnostics.Process.Start("cmd.exe", "/C " + cmd);
+            // Only allow a small set of predefined commands identified by key.
+            if (string.IsNullOrWhiteSpace(cmd))
+            {
+                return BadRequest("No command specified.");
+            }
 
-            return Ok("Executed command");
+            // Map user-provided key to hard-coded, safe commands.
+            string arguments;
+            switch (cmd)
+            {
+                case "time":
+                    // Show current system time (Windows example)
+                    arguments = "/C time /T";
+                    break;
+                case "whoami":
+                    // Show the identity under which the process is running
+                    arguments = "/C whoami";
+                    break;
+                default:
+                    // Reject anything that is not explicitly allowed
+                    return BadRequest("Unsupported command.");
+            }
+
+            var processStartInfo = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "cmd.exe",
+                Arguments = arguments,
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            };
+
+            using var process = System.Diagnostics.Process.Start(processStartInfo);
+            if (process == null)
+            {
+                return StatusCode(500, "Failed to start process.");
+            }
+
+            string output = process.StandardOutput.ReadToEnd();
+            string error = process.StandardError.ReadToEnd();
+            process.WaitForExit();
+
+            if (!string.IsNullOrEmpty(error))
+            {
+                return StatusCode(500, error);
+            }
+
+            return Ok(string.IsNullOrEmpty(output) ? "Command executed." : output);
         }
     }
 }
