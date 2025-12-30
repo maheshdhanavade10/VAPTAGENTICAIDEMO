@@ -75,15 +75,15 @@ jobs:
           SONAR_ORG_KEY: ${{ secrets.SONAR_ORG_KEY }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         run: |
-          dotnet-sonarscanner begin \
-            /k:"${SONAR_PROJECT_KEY}" \
-            /o:"${SONAR_ORG_KEY}" \
-            /d:sonar.login="${SONAR_TOKEN}" \
-            /d:sonar.host.url="${SONAR_HOST_URL}"
+          dotnet-sonarscanner begin `
+            /k:"$env:SONAR_PROJECT_KEY" `
+            /o:"$env:SONAR_ORG_KEY" `
+            /d:sonar.login="$env:SONAR_TOKEN" `
+            /d:sonar.host.url="$env:SONAR_HOST_URL"
 
           dotnet build
 
-          dotnet-sonarscanner end /d:sonar.login="${SONAR_TOKEN}"
+          dotnet-sonarscanner end /d:sonar.login="$env:SONAR_TOKEN"
 
   # ---------------------------------------------------------
   # JOB 3: OWASP Dependency Check (SCA)
