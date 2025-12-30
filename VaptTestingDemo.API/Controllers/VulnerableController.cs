@@ -46,9 +46,28 @@ namespace DemoApi.Controllers
         [HttpGet("file")]
         public IActionResult ReadFile(string filename)
         {
-            // ❌ Vulnerable: User-controlled file path
-            string path = Path.Combine("C:\\data\\files", filename);
-            string content = System.IO.File.ReadAllText(path);
+            // Validate and restrict user-controlled file path to a safe base directory
+            if (string.IsNullOrWhiteSpace(filename))
+            {
+                return BadRequest("Filename is required.");
+            }
+
+            var baseDirectory = "C:\\data\\files";
+            var fullBaseDirectory = Path.GetFullPath(baseDirectory);
+            var combinedPath = Path.Combine(fullBaseDirectory, filename);
+            var fullPath = Path.GetFullPath(combinedPath);
+
+            // Ensure the resolved path is within the base directory to prevent path traversal
+            var baseWithSeparator = fullBaseDirectory.EndsWith(Path.DirectorySeparatorChar.ToString())
+                ? fullBaseDirectory
+                : fullBaseDirectory + Path.DirectorySeparatorChar;
+
+            if (!fullPath.StartsWith(baseWithSeparator, System.StringComparison.OrdinalIgnoreCase))
+            {
+                return BadRequest("Invalid filename.");
+            }
+
+            string content = System.IO.File.ReadAllText(fullPath);
 
             return Ok(content);
         }
