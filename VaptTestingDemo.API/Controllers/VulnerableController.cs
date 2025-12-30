@@ -74,8 +74,37 @@ namespace DemoApi.Controllers
         [HttpGet("redirect")]
         public IActionResult RedirectTo(string url)
         {
-            // ❌ Vulnerable: Unvalidated redirect
-            return Redirect(url);
+            // Validate redirect target: allow only relative URLs or same-host absolute URLs
+            if (string.IsNullOrWhiteSpace(url))
+            {
+                return BadRequest("Missing redirect URL.");
+            }
+
+            Uri redirectUri;
+            try
+            {
+                redirectUri = new Uri(url, UriKind.RelativeOrAbsolute);
+            }
+            catch (UriFormatException)
+            {
+                return BadRequest("Invalid redirect URL format.");
+            }
+
+            // Allow relative URLs (no scheme/host)
+            if (!redirectUri.IsAbsoluteUri)
+            {
+                return Redirect(url);
+            }
+
+            // Allow absolute URLs only if they point to the same host as the current request
+            var currentHost = Request?.Host.Host;
+            if (!string.IsNullOrEmpty(currentHost) &&
+                string.Equals(redirectUri.Host, currentHost, StringComparison.OrdinalIgnoreCase))
+            {
+                return Redirect(url);
+            }
+
+            return BadRequest("Invalid redirect URL.");
         }
 
         // ---------------------------------------------------------
