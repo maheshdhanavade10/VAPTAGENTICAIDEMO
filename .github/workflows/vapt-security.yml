@@ -9,7 +9,9 @@ on:
 
 jobs:
 
-  # --- JOB 1: CodeQL Analysis ---
+  # ---------------------------------------------------------
+  # JOB 1: CodeQL Analysis
+  # ---------------------------------------------------------
   codeql-analysis:
     name: CodeQL Analysis (C#)
     runs-on: ubuntu-latest
@@ -33,7 +35,9 @@ jobs:
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
 
-  # --- JOB 2: SonarCloud Analysis ---
+  # ---------------------------------------------------------
+  # JOB 2: SonarCloud Analysis
+  # ---------------------------------------------------------
   sonar-analysis:
     name: SonarCloud Scan
     runs-on: windows-latest
@@ -81,7 +85,9 @@ jobs:
 
           dotnet-sonarscanner end /d:sonar.login="${SONAR_TOKEN}"
 
-  # --- JOB 3: OWASP Dependency Check (SCA) ---
+  # ---------------------------------------------------------
+  # JOB 3: OWASP Dependency Check (SCA)
+  # ---------------------------------------------------------
   owasp-dependency-check:
     name: OWASP Dependency Check (SCA)
     runs-on: ubuntu-latest
@@ -93,7 +99,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: OWASP Dependency Check
-        uses: dependency-check/Dependency-Check_Action@v3.0.3
+        uses: dependency-check/Dependency-Check_Action@v3.1.2
         with:
           project: "VAPTAGENTICAIDEMO"
           path: "."
@@ -106,7 +112,9 @@ jobs:
           name: owasp-dependency-check-report
           path: dependency-check-report
 
-  # --- JOB 4: OWASP ZAP Baseline Scan (DAST) ---
+  # ---------------------------------------------------------
+  # JOB 4: OWASP ZAP Baseline Scan (DAST)
+  # ---------------------------------------------------------
   owasp-zap:
     name: OWASP ZAP Baseline Scan (DAST)
     runs-on: ubuntu-latest
@@ -117,7 +125,7 @@ jobs:
       - name: ZAP Baseline Scan
         uses: zaproxy/action-baseline@v0.10.0
         with:
-          target: "https://your-app-url.com"   # Replace with your deployed app URL
+          target: "${{ vars.APP_URL }}"
           cmd_options: "-a"
 
       - name: Upload ZAP Report
@@ -126,7 +134,9 @@ jobs:
           name: zap-report
           path: zap-report.html
 
-  # --- JOB 5: Auto-fix and PR Creation ---
+  # ---------------------------------------------------------
+  # JOB 5: Auto-fix and PR Creation
+  # ---------------------------------------------------------
   auto-fix-pr:
     name: Auto-fix and Create PR (SonarCloud + CodeQL)
     runs-on: ubuntu-latest
