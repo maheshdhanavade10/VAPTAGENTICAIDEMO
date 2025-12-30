@@ -10,7 +10,7 @@ on:
 jobs:
 
   # ---------------------------------------------------------
-  # JOB 1: CodeQL Analysis (DISABLED)
+  # JOB 1: CodeQL Analysis (C#)
   # ---------------------------------------------------------
   codeql-analysis:
     name: CodeQL Analysis (C#)
@@ -19,21 +19,30 @@ jobs:
       actions: read
       contents: read
       security-events: write
-  
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-  
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '8.0.x'
+
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
         with:
           languages: csharp
-  
-      - name: Autobuild
-        uses: github/codeql-action/autobuild@v3
-  
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build solution
+        run: dotnet build --configuration Release --no-restore
+
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
+
 
   # ---------------------------------------------------------
   # JOB 2: SonarCloud Analysis (DISABLED)
@@ -85,6 +94,7 @@ jobs:
   #
   #         dotnet-sonarscanner end /d:sonar.login="$env:SONAR_TOKEN"
 
+
   # ---------------------------------------------------------
   # JOB 3: OWASP Dependency Check (SCA)
   # ---------------------------------------------------------
@@ -92,11 +102,11 @@ jobs:
   #   name: OWASP Dependency Check (SCA)
   #   runs-on: ubuntu-latest
   #   if: always()
-
+  #
   #   steps:
   #     - name: Checkout repository
   #       uses: actions/checkout@v4
-
+  #
   #     - name: OWASP Dependency Check
   #       uses: dependency-check/action@v3.0.0
   #       with:
@@ -104,12 +114,13 @@ jobs:
   #         path: "."
   #         format: "ALL"
   #         out: "dependency-check-report"
-
+  #
   #     - name: Upload Dependency Check Report
   #       uses: actions/upload-artifact@v4
   #       with:
   #         name: owasp-dependency-check-report
   #         path: dependency-check-report
+
 
   # ---------------------------------------------------------
   # JOB 4: OWASP ZAP Baseline Scan (DAST)
@@ -120,19 +131,19 @@ jobs:
   #   if: always()
   #   env:
   #     APP_URL: http://localhost:5000
-
+  #
   #   steps:
   #     - name: Checkout repository
   #       uses: actions/checkout@v4
-
+  #
   #     - name: Build API Docker image for scan
   #       run: |
   #         docker build -t vapt-testing-demo.api:ci -f VaptTestingDemo.API/Dockerfile VaptTestingDemo.API
-
+  #
   #     - name: Run API container for scan
   #       run: |
   #         docker run -d --rm --name vapt-testing-demo-ci -p 5000:80 vapt-testing-demo.api:ci
-
+  #
   #     - name: Wait for API to be ready
   #       run: |
   #         for i in {1..30}; do
@@ -141,22 +152,23 @@ jobs:
   #           fi
   #           echo "Waiting for API... ($i)"; sleep 2
   #         done
-
+  #
   #     - name: ZAP Baseline Scan
   #       uses: zaproxy/action-baseline@v0.10.0
   #       with:
   #         target: "${{ env.APP_URL }}"
   #         cmd_options: "-a"
-
+  #
   #     - name: Stop API container
   #       if: always()
   #       run: docker stop vapt-testing-demo-ci || true
-
+  #
   #     - name: Upload ZAP Report
   #       uses: actions/upload-artifact@v4
   #       with:
   #         name: zap-report
   #         path: zap-report.html
+
 
   # ---------------------------------------------------------
   # JOB 5: Auto-fix and PR Creation (DISABLED)
