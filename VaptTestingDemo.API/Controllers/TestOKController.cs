@@ -12,6 +12,14 @@ namespace VaptTestingDemo.API.Controllers
     public class TestOKController : ControllerBase
     {
 
+[HttpGet("read")] 
+public IActionResult ReadFile(string filename) 
+{ 
+    // ❌ Vulnerable: user controls file path 
+     var path = Path.Combine("C:\\data\\files", filename); 
+    var content = System.IO.File.ReadAllText(path); 
+    return Ok(content); 
+    }
 
         //generate sample get request with ok response
         [HttpGet("auth")]

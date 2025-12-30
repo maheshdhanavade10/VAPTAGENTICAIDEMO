@@ -12,6 +12,17 @@ namespace VaptTestingDemo.API.Controllers
     public class TestController : ControllerBase
     {
     
+[HttpGet("find")] 
+public IActionResult FindUser(string username) 
+{ 
+// ❌ Vulnerable: concatenating user input into SQL 
+var query = "SELECT * FROM Users WHERE Username = '" + username + "'"; 
+using var conn = new SqlConnection("Server=.;Database=Test;Trusted_Connection=True;"); 
+using var cmd = new SqlCommand(query, conn); 
+conn.Open(); 
+var reader = cmd.ExecuteReader(); 
+return Ok("Query executed"); 
+}
 
     //generate sample get request with ok response
     [HttpGet("auth")]
@@ -50,6 +61,6 @@ namespace VaptTestingDemo.API.Controllers
                 return Ok(new { Query = query, Error = ex.Message, Message = "This is vulnerable to SQL injection" });
             }
         }
-        
+
     }
 }
