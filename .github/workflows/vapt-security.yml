@@ -98,7 +98,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: OWASP Dependency Check
-        uses: dependency-check/dependency-check-action@v3
+        uses: dependency-check/action@v3.0.0
         with:
           project: "VAPTAGENTICAIDEMO"
           path: "."
