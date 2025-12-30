@@ -1,4 +1,4 @@
-name: OWASP Security Scan Only
+name: CodeQL Analysis (C#)
 
 on:
   push:
@@ -12,8 +12,8 @@ jobs:
   # ---------------------------------------------------------
   # JOB 1: CodeQL Analysis (C#)
   # ---------------------------------------------------------
-  codeql-analysis:
-    name: CodeQL Analysis (C#)
+  codeql:
+    name: CodeQL
     runs-on: ubuntu-latest
     permissions:
       actions: read
