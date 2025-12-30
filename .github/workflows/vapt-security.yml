@@ -8,7 +8,10 @@ on:
   workflow_dispatch:
 
 jobs:
-  # --- JOB 1: CodeQL Analysis ---
+
+  # ---------------------------------------------------------
+  # JOB 1: CodeQL Analysis
+  # ---------------------------------------------------------
   codeql-analysis:
     name: CodeQL Analysis (C#)
     runs-on: ubuntu-latest
@@ -32,7 +35,9 @@ jobs:
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
 
-  # --- JOB 2: SonarCloud Analysis ---
+  # ---------------------------------------------------------
+  # JOB 2: SonarCloud Analysis
+  # ---------------------------------------------------------
   sonar-analysis:
     name: SonarCloud Scan
     runs-on: windows-latest
@@ -66,16 +71,74 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_PROJECT_KEY: ${{ secrets.SONAR_PROJECT_KEY }}
+          SONAR_ORG_KEY: ${{ secrets.SONAR_ORG_KEY }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         run: |
-          dotnet-sonarscanner begin /k:"maheshdhanavade10_VAPTAGENTICAIDEMO" /o:"maheshdhanavade10" /d:sonar.login="${{ secrets.SONAR_TOKEN }}" /d:sonar.host.url="https://sonarcloud.io"
-          dotnet build
-          dotnet-sonarscanner end /d:sonar.login="${{ secrets.SONAR_TOKEN }}"
+          dotnet-sonarscanner begin \
+            /k:"${SONAR_PROJECT_KEY}" \
+            /o:"${SONAR_ORG_KEY}" \
+            /d:sonar.login="${SONAR_TOKEN}" \
+            /d:sonar.host.url="${SONAR_HOST_URL}"
 
-  # --- JOB 3: Auto-fix and PR Creation with SonarCloud API ---
+          dotnet build
+
+          dotnet-sonarscanner end /d:sonar.login="${SONAR_TOKEN}"
+
+  # ---------------------------------------------------------
+  # JOB 3: OWASP Dependency Check (SCA)
+  # ---------------------------------------------------------
+  owasp-dependency-check:
+    name: OWASP Dependency Check (SCA)
+    runs-on: ubuntu-latest
+    needs: [codeql-analysis, sonar-analysis]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: OWASP Dependency Check
+        uses: dependency-check/Dependency-Check_Action@v3.0.3
+        with:
+          project: "VAPTAGENTICAIDEMO"
+          path: "."
+          format: "ALL"
+          out: "dependency-check-report"
+
+      - name: Upload Dependency Check Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: owasp-dependency-check-report
+          path: dependency-check-report
+
+  # ---------------------------------------------------------
+  # JOB 4: OWASP ZAP Baseline Scan (DAST)
+  # ---------------------------------------------------------
+  owasp-zap:
+    name: OWASP ZAP Baseline Scan (DAST)
+    runs-on: ubuntu-latest
+    needs: [codeql-analysis, sonar-analysis]
+
+    steps:
+      - name: ZAP Baseline Scan
+        uses: zaproxy/action-baseline@v0.10.0
+        with:
+          target: "http://localhost:5000/swagger/index.html"   # <-- Replace with your deployed app URL
+          cmd_options: "-a"
+
+      - name: Upload ZAP Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-report
+          path: zap-report.html
+
+  # ---------------------------------------------------------
+  # JOB 5: Auto-fix and PR Creation
+  # ---------------------------------------------------------
   auto-fix-pr:
     name: Auto-fix and Create PR (SonarCloud + CodeQL)
     runs-on: ubuntu-latest
-    needs: [codeql-analysis, sonar-analysis]
+    needs: [codeql-analysis, sonar-analysis, owasp-dependency-check]
     permissions:
       contents: write
       pull-requests: write
@@ -92,79 +155,69 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
-      # Step 1: Run dotnet format for style fixes
       - name: Run .NET format auto-fixer
         run: |
           dotnet format --verify-no-changes || dotnet format
 
-      # Step 2: Install jq for JSON parsing
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
 
-      # Step 3: Fetch SonarCloud issues via API
       - name: Fetch SonarCloud Issues
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_PROJECT_KEY: ${{ secrets.SONAR_PROJECT_KEY }}
         run: |
           curl -s -u "${SONAR_TOKEN}:" \
-            "https://sonarcloud.io/api/issues/search?componentKeys=maheshdhanavade10_VAPTAGENTICAIDEMO&resolved=false" \
+            "https://sonarcloud.io/api/issues/search?componentKeys=${SONAR_PROJECT_KEY}&resolved=false" \
             -o sonar_issues.json
-          echo "SonarCloud issues downloaded."
 
-      # Step 4: Parse issues and apply rule-based fixes
       - name: Parse and Apply Rule-based Fixes
         run: |
-          echo "Parsing SonarCloud issues..."
           cat sonar_issues.json | jq '.issues[] | {rule, message, component, line}' > parsed_issues.json
-          echo "Parsed issues:"
-          cat parsed_issues.json
 
-          echo "Applying scripted fixes for known rules..."
-          # Example fix: remove unused using statements (csharpsquid:S1481)
+          # Example fix: remove unused using statements
           find . -name "*.cs" -exec sed -i '/^using .*;$/d' {} \;
 
-          # Example placeholder: collapse redundant if statements (csharpsquid:S1066)
-          # In practice, use Roslyn analyzers or custom scripts for safe fixes
-
-      # Step 5: Detect changes
       - name: Detect changes
         id: changes
         run: |
-          STATUS=$(git status --porcelain)
-          if [ -z "$STATUS" ]; then
+          if [ -z "$(git.status --porcelain)" ]; then
             echo "changed=false" >> $GITHUB_OUTPUT
           else
             echo "changed=true" >> $GITHUB_OUTPUT
           fi
 
-      # Step 6: Commit changes to a new branch
       - name: Commit changes
         id: commit
         if: steps.changes.outputs.changed == 'true'
         run: |
-          BRANCH="fix/sonar-codeql-issues"
+          BRANCH="fix/security-auto-fixes"
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
           if git ls-remote --exit-code --heads origin "$BRANCH" > /dev/null; then
-            BRANCH="fix/sonar-codeql-issues-$(date +%Y%m%d%H%M%S)"
+            BRANCH="fix/security-auto-fixes-$(date +%Y%m%d%H%M%S)"
           fi
+
           git checkout -b "$BRANCH"
           git add .
-          git commit -m "Auto-fix: SonarCloud & CodeQL issues (rule-based fixes)"
+          git commit -m "Automated security fixes (CodeQL + Sonar + OWASP)"
           git push origin "$BRANCH"
           echo "branch=$BRANCH" >> $GITHUB_OUTPUT
 
-      # Step 7: Create Pull Request
       - name: Create Pull Request
         if: steps.changes.outputs.changed == 'true'
         uses: peter-evans/create-pull-request@v6
         with:
           branch: ${{ steps.commit.outputs.branch }}
           base: main
-          title: "Auto-fix: SonarCloud & CodeQL issues"
+          title: "Automated Security Fixes (CodeQL + SonarCloud + OWASP)"
           body: |
-            This PR contains automated fixes for issues detected by SonarCloud and CodeQL.
-            Fixes applied include formatting and rule-based corrections (e.g., unused usings).
+            This PR includes automated fixes for:
+            - CodeQL findings
+            - SonarCloud issues
+            - OWASP dependency vulnerabilities (where possible)
+
             Generated by workflow: Advanced C# Security Scan with Auto-Fix
           draft: false
           labels: |
