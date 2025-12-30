@@ -11,6 +11,11 @@ namespace VaptTestingDemo.API.Controllers
     //[Route("api/test")]
     public class TestOKController : ControllerBase
     {
-        
+        //generate sample get request with ok response
+        [HttpGet("auth")]
+        public IActionResult GetAuthTest()
+        {
+            return Ok(new { Message = "Auth test successful" });
+        }
     }
 }
