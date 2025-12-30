@@ -1,0 +1,15 @@
+# Ignore build outputs and user files
+bin/
+obj/
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+**/*.csproj.user
+node_modules/
+*.log
+
+# Docker files
+Dockerfile*
+.dockerignore
