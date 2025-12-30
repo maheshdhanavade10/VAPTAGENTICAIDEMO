@@ -1,4 +1,4 @@
-name: Advanced C# Security Scan with Auto-Fix
+name: OWASP Security Scan Only
 
 on:
   push:
@@ -10,80 +10,80 @@ on:
 jobs:
 
   # ---------------------------------------------------------
-  # JOB 1: CodeQL Analysis
+  # JOB 1: CodeQL Analysis (DISABLED)
   # ---------------------------------------------------------
-  codeql-analysis:
-    name: CodeQL Analysis (C#)
-    runs-on: ubuntu-latest
-    permissions:
-      actions: read
-      contents: read
-      security-events: write
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
-        with:
-          languages: csharp
-
-      - name: Autobuild
-        uses: github/codeql-action/autobuild@v3
-
-      - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+  # codeql-analysis:
+  #   name: CodeQL Analysis (C#)
+  #   runs-on: ubuntu-latest
+  #   permissions:
+  #     actions: read
+  #     contents: read
+  #     security-events: write
+  #
+  #   steps:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@v4
+  #
+  #     - name: Initialize CodeQL
+  #       uses: github/codeql-action/init@v3
+  #       with:
+  #         languages: csharp
+  #
+  #     - name: Autobuild
+  #       uses: github/codeql-action/autobuild@v3
+  #
+  #     - name: Perform CodeQL Analysis
+  #       uses: github/codeql-action/analyze@v3
 
   # ---------------------------------------------------------
-  # JOB 2: SonarCloud Analysis
+  # JOB 2: SonarCloud Analysis (DISABLED)
   # ---------------------------------------------------------
-  sonar-analysis:
-    name: SonarCloud Scan
-    runs-on: windows-latest
-    permissions:
-      contents: read
-      security-events: write
-    
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v3
-        with:
-          dotnet-version: '8.0.x'
-
-      - name: Setup JDK 17
-        uses: actions/setup-java@v3
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-
-      - name: Install Sonar Scanner
-        run: |
-          dotnet tool install --global dotnet-sonarscanner
-          echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
-
-      - name: SonarCloud Analysis
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_PROJECT_KEY: ${{ secrets.SONAR_PROJECT_KEY }}
-          SONAR_ORG_KEY: ${{ secrets.SONAR_ORG_KEY }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-        run: |
-          dotnet-sonarscanner begin `
-            /k:"$env:SONAR_PROJECT_KEY" `
-            /o:"$env:SONAR_ORG_KEY" `
-            /d:sonar.login="$env:SONAR_TOKEN" `
-            /d:sonar.host.url="$env:SONAR_HOST_URL"
-
-          dotnet build
-
-          dotnet-sonarscanner end /d:sonar.login="$env:SONAR_TOKEN"
+  # sonar-analysis:
+  #   name: SonarCloud Scan
+  #   runs-on: windows-latest
+  #   permissions:
+  #     contents: read
+  #     security-events: write
+  #
+  #   steps:
+  #     - name: Checkout Code
+  #       uses: actions/checkout@v4
+  #       with:
+  #         fetch-depth: 0
+  #
+  #     - name: Setup .NET
+  #       uses: actions/setup-dotnet@v3
+  #       with:
+  #         dotnet-version: '8.0.x'
+  #
+  #     - name: Setup JDK 17
+  #       uses: actions/setup-java@v3
+  #       with:
+  #         java-version: '17'
+  #         distribution: 'temurin'
+  #
+  #     - name: Install Sonar Scanner
+  #       run: |
+  #         dotnet tool install --global dotnet-sonarscanner
+  #         echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
+  #
+  #     - name: SonarCloud Analysis
+  #       env:
+  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+  #         SONAR_PROJECT_KEY: ${{ secrets.SONAR_PROJECT_KEY }}
+  #         SONAR_ORG_KEY: ${{ secrets.SONAR_ORG_KEY }}
+  #         SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+  #       run: |
+  #         dotnet-sonarscanner begin `
+  #           /k:"$env:SONAR_PROJECT_KEY" `
+  #           /o:"$env:SONAR_ORG_KEY" `
+  #           /d:sonar.login="$env:SONAR_TOKEN" `
+  #           /d:sonar.host.url="$env:SONAR_HOST_URL"
+  #
+  #         dotnet build
+  #
+  #         dotnet-sonarscanner end /d:sonar.login="$env:SONAR_TOKEN"
 
   # ---------------------------------------------------------
   # JOB 3: OWASP Dependency Check (SCA)
@@ -91,7 +91,6 @@ jobs:
   owasp-dependency-check:
     name: OWASP Dependency Check (SCA)
     runs-on: ubuntu-latest
-    needs: [codeql-analysis, sonar-analysis]
     if: always()
 
     steps:
@@ -99,7 +98,6 @@ jobs:
         uses: actions/checkout@v4
 
       - name: OWASP Dependency Check
-        # Use the hyphenated, lowercase repository name for the official action
         uses: dependency-check/dependency-check-action@v3
         with:
           project: "VAPTAGENTICAIDEMO"
@@ -119,9 +117,7 @@ jobs:
   owasp-zap:
     name: OWASP ZAP Baseline Scan (DAST)
     runs-on: ubuntu-latest
-    needs: [codeql-analysis, sonar-analysis]
     if: always()
-    # Expose APP_URL for the zap target and allow steps to start a local container
     env:
       APP_URL: http://localhost:5000
 
@@ -139,7 +135,6 @@ jobs:
 
       - name: Wait for API to be ready
         run: |
-          # wait until the app responds on the health endpoint or root
           for i in {1..30}; do
             if curl -sSf "$APP_URL/api/test/auth" >/dev/null; then
               echo "API is up"; break
@@ -164,92 +159,29 @@ jobs:
           path: zap-report.html
 
   # ---------------------------------------------------------
-  # JOB 5: Auto-fix and PR Creation
+  # JOB 5: Auto-fix and PR Creation (DISABLED)
   # ---------------------------------------------------------
-  auto-fix-pr:
-    name: Auto-fix and Create PR (SonarCloud + CodeQL)
-    runs-on: ubuntu-latest
-    needs: [codeql-analysis, sonar-analysis, owasp-dependency-check]
-    if: always()
-    permissions:
-      contents: write
-      pull-requests: write
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          persist-credentials: true
-          fetch-depth: 0
-
-      - name: Setup .NET SDK
-        uses: actions/setup-dotnet@v3
-        with:
-          dotnet-version: '8.0.x'
-
-      - name: Run .NET format auto-fixer
-        run: |
-          dotnet format --verify-no-changes || dotnet format
-
-      - name: Install jq
-        run: sudo apt-get update && sudo apt-get install -y jq
-
-      - name: Fetch SonarCloud Issues
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_PROJECT_KEY: ${{ secrets.SONAR_PROJECT_KEY }}
-        run: |
-          curl -s -u "${SONAR_TOKEN}:" \
-            "https://sonarcloud.io/api/issues/search?componentKeys=${SONAR_PROJECT_KEY}&resolved=false" \
-            -o sonar_issues.json
-
-      - name: Parse and Apply Rule-based Fixes
-        run: |
-          cat sonar_issues.json | jq '.issues[] | {rule, message, component, line}' > parsed_issues.json
-          find . -name "*.cs" -exec sed -i '/^using .*;$/d' {} \;
-
-      - name: Detect changes
-        id: changes
-        run: |
-          if [ -z "$(git status --porcelain)" ]; then
-            echo "changed=false" >> $GITHUB_OUTPUT
-          else
-            echo "changed=true" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Commit changes
-        id: commit
-        if: steps.changes.outputs.changed == 'true'
-        run: |
-          BRANCH="fix/security-auto-fixes"
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-          if git ls-remote --exit-code --heads origin "$BRANCH" > /dev/null; then
-            BRANCH="fix/security-auto-fixes-$(date +%Y%m%d%H%M%S)"
-          fi
-
-          git checkout -b "$BRANCH"
-          git add .
-          git commit -m "Automated security fixes (CodeQL + Sonar + OWASP)"
-          git push origin "$BRANCH"
-          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
-
-      - name: Create Pull Request
-        if: steps.changes.outputs.changed == 'true'
-        uses: peter-evans/create-pull-request@v6
-        with:
-          branch: ${{ steps.commit.outputs.branch }}
-          base: main
-          title: "Automated Security Fixes (CodeQL + SonarCloud + OWASP)"
-          body: |
-            This PR includes automated fixes for:
-            - CodeQL findings
-            - SonarCloud issues
-            - OWASP dependency vulnerabilities (where possible)
-
-            Generated by workflow: Advanced C# Security Scan with Auto-Fix
-          draft: false
-          labels: |
-            security
-            automated-fix
+  # auto-fix-pr:
+  #   name: Auto-fix and Create PR (SonarCloud + CodeQL)
+  #   runs-on: ubuntu-latest
+  #   needs: [owasp-dependency-check]
+  #   if: always()
+  #   permissions:
+  #     contents: write
+  #     pull-requests: write
+  #
+  #   steps:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@v4
+  #       with:
+  #         persist-credentials: true
+  #         fetch-depth: 0
+  #
+  #     - name: Setup .NET SDK
+  #       uses: actions/setup-dotnet@v3
+  #       with:
+  #         dotnet-version: '8.0.x'
+  #
+  #     - name: Run .NET format auto-fixer
+  #       run: |
+  #         dotnet format --verify-no-changes || dotnet format
