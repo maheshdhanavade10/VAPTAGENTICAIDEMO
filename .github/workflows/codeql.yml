@@ -19,28 +19,40 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        language: [ 'csharp']
-        # Remove languages you don't use
+        language: [ 'csharp' ]
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
-    
+
     - name: Setup .NET SDK
-      uses: actions/setup-dotnet@v3
+      uses: actions/setup-dotnet@v4
       with:
-          dotnet-version: '8.0.x'  
+        dotnet-version: '8.0.x'
 
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v3
       with:
         languages: ${{ matrix.language }}
+        queries: security-extended,security-and-quality
+        # Exclude the Tests folder from being indexed/scanned
+        config: |
+          paths-ignore:
+            - 'VaptTestingDemo.Tests/**'
 
     - name: Restore dependencies
-      run: dotnet restore
+      run: dotnet restore VaptTestingDemo.API/VaptTestingDemo.API.csproj
 
-    - name: Build solution
-      run: dotnet build --configuration Release --no-restore
+    - name: Build API Project
+      run: |
+        dotnet build VaptTestingDemo.API/VaptTestingDemo.API.csproj \
+        --configuration Release \
+        --no-restore \
+        --no-incremental \
+        -p:UseSharedCompilation=false \
+        -p:BuildInParallel=false
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3
+      with:
+        category: "/language:${{matrix.language}}"
