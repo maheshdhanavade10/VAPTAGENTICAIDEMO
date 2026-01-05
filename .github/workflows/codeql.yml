@@ -4,7 +4,7 @@ on:
   # push:
   #   branches: [ "main" ]
   # pull_request:
-  #   branches: [ "main" ] # This triggers the Autofix on your PRs
+  #   branches: [ "main" ]
   workflow_dispatch:
 
 jobs:
@@ -14,8 +14,8 @@ jobs:
     permissions:
       actions: read
       contents: write
-      security-events: write
-      pull-requests: write # Required to post the fix on the PR
+      security-events: write # Required to update/clear alerts in the Security Tab
+      pull-requests: write
 
     steps:
     - name: Checkout repository
@@ -30,9 +30,10 @@ jobs:
       uses: github/codeql-action/init@v3
       with:
         languages: 'csharp'
+        # These query suites find the most common vulnerabilities
         queries: security-extended,security-and-quality
 
-    - name: Restore and Build
+    - name: Build
       run: |
         dotnet restore VaptTestingDemo.API/VaptTestingDemo.API.csproj
         dotnet build VaptTestingDemo.API/VaptTestingDemo.API.csproj --configuration Release
